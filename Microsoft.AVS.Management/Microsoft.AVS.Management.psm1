@@ -210,7 +210,33 @@ function Get-UnassociatedVsanObjectsWithPolicy {
             $matchedObjects++
             try {
                 $jsonResult = ($vsanIntSys.GetVsanObjExtAttrs($obj.Uuid)) | ConvertFrom-Json
-                Write-Output $jsonResult
+                
+                foreach ($object in $jsonResult | Get-Member) {
+
+                    if ($($object.Name) -ne "Equals" -and
+                        $($object.Name) -ne "GetHashCode" -and
+                        $($object.Name) -ne "GetType" -and
+                        $($object.Name) -ne "ToString") {
+
+                        $objectID = $object.Name
+
+                        if ($null -ne $jsonResult.$($objectID).'User friendly name') {
+                            $friendlyName = $jsonResult.$($objectID).'User friendly name'
+                        }
+                        else {
+                            $friendlyName = '<not-available>'
+                        }
+
+                        $output = [pscustomobject]@{
+                            Uuid         = $jsonResult.$($objectID).'UUID'
+                            PolicyName   = $obj.SpbmProfileName
+                            FriendlyName = $friendlyName
+                        }
+
+                        Write-Output $output
+                    }
+                }
+
             }
             catch {
                 Write-Warning "Failed to retrieve or parse attributes for object $($obj.Uuid): $_"
